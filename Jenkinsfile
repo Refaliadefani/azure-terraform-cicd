@@ -1,27 +1,46 @@
 pipeline {
     agent any
+
+    tools {
+        terraform 'terraform' 
+    }
+
     stages {
         stage('Pull Code') {
             steps {
-                // Ini pengganti git pull manual, Jenkins otomatis narik kodenya
+                // Jenkins otomatis narik kodenya, gak perlu git pull manual!
                 checkout scm 
+                echo "Barangnya udah sampe dari GitHub, Cong! ✨"
             }
         }
+
         stage('Terraform Init') {
             steps {
-                sh 'terraform init'
+                // Tambahin -input=false biar gak macet nunggu ketikan lo
+                sh 'terraform init -input=false'
             }
         }
+
         stage('Terraform Plan') {
             steps {
                 sh 'terraform plan -out=tfplan'
             }
         }
+
         stage('Terraform Apply') {
             steps {
-                // Gak pake SP kan? Pastiin use_msi = true udah ada di main.tf ya!
+                // Inget: use_msi = true harus udah ada di provider main.tf ya!
                 sh 'terraform apply -auto-approve tfplan'
             }
+        }
+    }
+
+    post {
+        success {
+            echo "SLAY! Infrastruktur Azure lo udah jadi, Refa! 🚀🔥"
+        }
+        failure {
+            echo "Yah, merah lagi! Cek Console Output, pasti ada yang kurang tuh! 🚩"
         }
     }
 }
