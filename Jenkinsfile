@@ -1,56 +1,63 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            // Mendefinisikan Pod sementara yang berisi container Terraform
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: terraform
+    image: hashicorp/terraform:1.5.7
+    command:
+    - cat
+    tty: true
+'''
+        }
+    }
 
     stages {
         stage('Checkout Code') {
             steps {
+                // Mengambil source code dari GitHub
                 checkout scm 
-            }
-        }
-
-        stage('Setup Terraform') {
-            steps {
-                sh '''
-                    # Kita pake versi .tar.gz supaya gak butuh unzip! ✨
-                    if [ ! -f "terraform" ]; then
-                        echo "Lagi narik Terraform versi tar.gz... 🏎️💨"
-                        # Pakai versi 0.11.15 karena HashiCorp menyediakan format tar.gz yang stabil
-                        curl -Lo terraform.tar.gz https://releases.hashicorp.com/terraform/0.11.15/terraform_0.11.15_linux_amd64.tar.gz
-                        
-                        # Extract pake tar (Ini pasti ada di semua Linux)
-                        tar -xzf terraform.tar.gz
-                        rm terraform.tar.gz
-                    fi
-                    
-                    chmod +x terraform
-                    ./terraform version
-                '''
             }
         }
 
         stage('Terraform Init') {
             steps {
-                sh './terraform init -input=false'
+                // Menjalankan perintah di dalam container 'terraform'
+                container('terraform') {
+                    sh 'terraform init -input=false'
+                }
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                sh './terraform plan -out=tfplan'
+                container('terraform') {
+                    // Membuat file rencana (plan)
+                    sh 'terraform plan -out=tfplan'
+                }
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                sh './terraform apply -auto-approve tfplan'
+                container('terraform') {
+                    // Eksekusi perubahan ke Azure
+                    sh 'terraform apply -auto-approve tfplan'
+                }
             }
         }
     }
 
     post {
-        always {
-            // Bersihin file plan biar gak nyampah
-            sh 'rm -f tfplan'
+        success {
+            echo "Pipeline berhasil diselesaikan. Infrastruktur telah diperbarui."
+        }
+        failure {
+            echo "Pipeline gagal. Silakan periksa log di Console Output."
         }
     }
 }
