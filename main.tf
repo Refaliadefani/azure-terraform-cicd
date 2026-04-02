@@ -11,6 +11,7 @@ terraform {
 provider "azurerm" {
   features {}
   use_msi = true
+  subscription_id = "c943efc2-430f-4c7c-a428-293d6fb2c352"
 }
 
 # 2. Buat Resource Group (Rumah Infrastruktur)
