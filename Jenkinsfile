@@ -11,22 +11,15 @@ pipeline {
         stage('Setup Terraform') {
             steps {
                 sh '''
-                    # Karena unzip & python tidak ada, kita download binary-nya saja
-                    # Kita gunakan versi 0.12.31 karena tersedia link binary langsung 
-                    # Jika ingin versi 1.x, pastikan link-nya tepat
-                    
+                    # Kita pake versi .tar.gz supaya gak butuh unzip! ✨
                     if [ ! -f "terraform" ]; then
-                        echo "Downloading terraform binary..."
-                        # Mengambil binary yang sudah diekstrak (pake link versi amd64)
-                        curl -Lo terraform https://raw.githubusercontent.com/Refaliadefani/azure-terraform-cicd/main/terraform || echo "Gagal download"
+                        echo "Lagi narik Terraform versi tar.gz... 🏎️💨"
+                        # Pakai versi 0.11.15 karena HashiCorp menyediakan format tar.gz yang stabil
+                        curl -Lo terraform.tar.gz https://releases.hashicorp.com/terraform/0.11.15/terraform_0.11.15_linux_amd64.tar.gz
                         
-                        # Jika link di atas tidak jalan, kita gunakan cara alternatif:
-                        # Mendownload zip lalu kita akali pake 'jar' (biasanya ada di Jenkins)
-                        if [ ! -f "terraform" ]; then
-                           curl -LO https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                           # Jenkins biasanya punya Java, jadi kita bisa pakai 'jar' untuk unzip
-                           jar xf terraform_1.5.7_linux_amd64.zip
-                        fi
+                        # Extract pake tar (Ini pasti ada di semua Linux)
+                        tar -xzf terraform.tar.gz
+                        rm terraform.tar.gz
                     fi
                     
                     chmod +x terraform
@@ -56,7 +49,8 @@ pipeline {
 
     post {
         always {
-            sh 'rm -f tfplan terraform_1.5.7_linux_amd64.zip'
+            // Bersihin file plan biar gak nyampah
+            sh 'rm -f tfplan'
         }
     }
 }
