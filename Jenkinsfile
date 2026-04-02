@@ -4,7 +4,6 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                // Mengambil kode dari GitHub
                 checkout scm 
             }
         }
@@ -12,17 +11,25 @@ pipeline {
         stage('Setup Terraform') {
             steps {
                 sh '''
-                    # Download Terraform versi 1.5.7 (Linux 64-bit)
-                    # Menggunakan curl karena lebih stabil di lingkungan CI/CD
-                    curl -LO https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                    # Karena unzip & python tidak ada, kita download binary-nya saja
+                    # Kita gunakan versi 0.12.31 karena tersedia link binary langsung 
+                    # Jika ingin versi 1.x, pastikan link-nya tepat
                     
-                    # Unzip file. Jika unzip tidak ada, gunakan python untuk extract
-                    unzip terraform_1.5.7_linux_amd64.zip || python3 -m zipfile -e terraform_1.5.7_linux_amd64.zip .
+                    if [ ! -f "terraform" ]; then
+                        echo "Downloading terraform binary..."
+                        # Mengambil binary yang sudah diekstrak (pake link versi amd64)
+                        curl -Lo terraform https://raw.githubusercontent.com/Refaliadefani/azure-terraform-cicd/main/terraform || echo "Gagal download"
+                        
+                        # Jika link di atas tidak jalan, kita gunakan cara alternatif:
+                        # Mendownload zip lalu kita akali pake 'jar' (biasanya ada di Jenkins)
+                        if [ ! -f "terraform" ]; then
+                           curl -LO https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                           # Jenkins biasanya punya Java, jadi kita bisa pakai 'jar' untuk unzip
+                           jar xf terraform_1.5.7_linux_amd64.zip
+                        fi
+                    fi
                     
-                    # Memberikan izin eksekusi pada binary terraform
                     chmod +x terraform
-                    
-                    # Verifikasi apakah terraform bisa dijalankan
                     ./terraform version
                 '''
             }
@@ -30,21 +37,18 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                // Menjalankan inisialisasi menggunakan binary lokal (./)
                 sh './terraform init -input=false'
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                // Membuat rencana perubahan infrastruktur
                 sh './terraform plan -out=tfplan'
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                // Eksekusi perubahan ke Azure secara otomatis
                 sh './terraform apply -auto-approve tfplan'
             }
         }
@@ -52,7 +56,6 @@ pipeline {
 
     post {
         always {
-            // Menghapus file plan dan zip agar workspace tetap bersih
             sh 'rm -f tfplan terraform_1.5.7_linux_amd64.zip'
         }
     }
