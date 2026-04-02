@@ -2,42 +2,58 @@ pipeline {
     agent any
 
     stages {
-        stage('Step 1: Pull Code') {
+        stage('Checkout Code') {
             steps {
+                // Mengambil kode dari GitHub
                 checkout scm 
-                echo "Barangnya aman, Ref! ✨"
             }
         }
 
-        stage('Step 2: Install & Init Terraform') {
+        stage('Setup Terraform') {
             steps {
                 sh '''
-                    if ! command -v terraform &> /dev/null; then
-                        echo "Terraform gak ada, gue instalin bentar ya, Bestie..."
-                        curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-                        echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-                        sudo apt-get update && sudo apt-get install terraform -y
-                    fi
-                    terraform init -input=false
+                    # Download Terraform versi 1.5.7 (Linux 64-bit)
+                    # Menggunakan curl karena lebih stabil di lingkungan CI/CD
+                    curl -LO https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                    
+                    # Unzip file. Jika unzip tidak ada, gunakan python untuk extract
+                    unzip terraform_1.5.7_linux_amd64.zip || python3 -m zipfile -e terraform_1.5.7_linux_amd64.zip .
+                    
+                    # Memberikan izin eksekusi pada binary terraform
+                    chmod +x terraform
+                    
+                    # Verifikasi apakah terraform bisa dijalankan
+                    ./terraform version
                 '''
             }
         }
 
-        stage('Step 3: Terraform Plan') {
+        stage('Terraform Init') {
             steps {
-                sh 'terraform plan -out=tfplan'
+                // Menjalankan inisialisasi menggunakan binary lokal (./)
+                sh './terraform init -input=false'
             }
         }
 
-        stage('Step 4: Terraform Apply') {
+        stage('Terraform Plan') {
             steps {
-                sh 'terraform apply -auto-approve tfplan'
+                // Membuat rencana perubahan infrastruktur
+                sh './terraform plan -out=tfplan'
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                // Eksekusi perubahan ke Azure secara otomatis
+                sh './terraform apply -auto-approve tfplan'
             }
         }
     }
 
     post {
-        success { echo "AKHIRNYA HIJAU JUGA! 🚀🔥💅" }
-        failure { echo "Cek lagi! Dikit lagi tembus ini! 🚩" }
+        always {
+            // Menghapus file plan dan zip agar workspace tetap bersih
+            sh 'rm -f tfplan terraform_1.5.7_linux_amd64.zip'
+        }
     }
 }
