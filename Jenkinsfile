@@ -1,45 +1,43 @@
 pipeline {
     agent any
 
-    // GANTI JADI 'terraform-latest' BIAR SI JENKINS GAK BINGUNG LAGI! ✨
-    tools {
-        terraform 'terraform-latest' 
-    }
-
     stages {
-        stage('Pull Code') {
+        stage('Step 1: Pull Code') {
             steps {
                 checkout scm 
-                echo "Barangnya udah sampe, Bestie! 💅"
+                echo "Barangnya aman, Ref! ✨"
             }
         }
 
-        stage('Terraform Init') {
+        stage('Step 2: Install & Init Terraform') {
             steps {
-                sh 'terraform init -input=false'
+                sh '''
+                    if ! command -v terraform &> /dev/null; then
+                        echo "Terraform gak ada, gue instalin bentar ya, Bestie..."
+                        curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+                        echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+                        sudo apt-get update && sudo apt-get install terraform -y
+                    fi
+                    terraform init -input=false
+                '''
             }
         }
 
-        stage('Terraform Plan') {
+        stage('Step 3: Terraform Plan') {
             steps {
                 sh 'terraform plan -out=tfplan'
             }
         }
 
-        stage('Terraform Apply') {
+        stage('Step 4: Terraform Apply') {
             steps {
-                // Pastiin use_msi = true ada di main.tf ya!
                 sh 'terraform apply -auto-approve tfplan'
             }
         }
     }
 
     post {
-        success {
-            echo "SLAY! Akhirnya tembus Azure! 🚀🔥"
-        }
-        failure {
-            echo "Yah, merah lagi! Cek Console Output-nya, Cong! 🚩"
-        }
+        success { echo "AKHIRNYA HIJAU JUGA! 🚀🔥💅" }
+        failure { echo "Cek lagi! Dikit lagi tembus ini! 🚩" }
     }
 }
