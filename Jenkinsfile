@@ -1,22 +1,21 @@
 pipeline {
     agent any
 
+    // GANTI JADI 'terraform-latest' BIAR SI JENKINS GAK BINGUNG LAGI! ✨
     tools {
-        terraform 'terraform' 
+        terraform 'terraform-latest' 
     }
 
     stages {
         stage('Pull Code') {
             steps {
-                // Jenkins otomatis narik kodenya, gak perlu git pull manual!
                 checkout scm 
-                echo "Barangnya udah sampe dari GitHub, Cong! ✨"
+                echo "Barangnya udah sampe, Bestie! 💅"
             }
         }
 
         stage('Terraform Init') {
             steps {
-                // Tambahin -input=false biar gak macet nunggu ketikan lo
                 sh 'terraform init -input=false'
             }
         }
@@ -29,7 +28,7 @@ pipeline {
 
         stage('Terraform Apply') {
             steps {
-                // Inget: use_msi = true harus udah ada di provider main.tf ya!
+                // Pastiin use_msi = true ada di main.tf ya!
                 sh 'terraform apply -auto-approve tfplan'
             }
         }
@@ -37,10 +36,10 @@ pipeline {
 
     post {
         success {
-            echo "SLAY! Infrastruktur Azure lo udah jadi, Refa! 🚀🔥"
+            echo "SLAY! Akhirnya tembus Azure! 🚀🔥"
         }
         failure {
-            echo "Yah, merah lagi! Cek Console Output, pasti ada yang kurang tuh! 🚩"
+            echo "Yah, merah lagi! Cek Console Output-nya, Cong! 🚩"
         }
     }
 }
