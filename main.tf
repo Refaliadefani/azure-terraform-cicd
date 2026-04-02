@@ -10,6 +10,7 @@ terraform {
 
 provider "azurerm" {
   features {}
+  use_msi = true
 }
 
 # 2. Buat Resource Group (Rumah Infrastruktur)
